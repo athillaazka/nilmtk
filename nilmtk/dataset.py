@@ -9,6 +9,7 @@ from .datastore.datastore import join_key
 from .utils import get_datastore
 from .timeframe import TimeFrame
 
+import nilmtk
 
 class DataSet(object):
     """
@@ -43,6 +44,12 @@ class DataSet(object):
         self.metadata = {}
         if filename is not None:
             self.import_metadata(get_datastore(filename, format))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     def import_metadata(self, store):
         """
@@ -138,6 +145,14 @@ class DataSet(object):
 
     def elecs(self):
         return [building.elec for building in self.buildings.values()]
+
+    def close(self):
+        self.clear_cache()
+        nilmtk.STATS_CACHE.close()
+
+        if self.store is not None:
+            self.store.close()
+            self.store = None
 
     def clear_cache(self):
         for elec in self.elecs():
