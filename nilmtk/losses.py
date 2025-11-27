@@ -1,6 +1,40 @@
 from sklearn.metrics import mean_squared_error, mean_absolute_error, f1_score, r2_score
 import numpy as np
 
+def nrmse(y_true, y_pred):
+    """
+    Normalized root mean squared error between two series.
+
+    Parameters
+    ----------
+    y_true, y_pred : pandas.Series or array-like
+        Ground truth and predictions aligned on the same index.
+
+    Returns
+    -------
+    float
+        Normalized RMSE (RMSE divided by RMS of y_true).
+    """
+    # Convert to numpy arrays and drop NaNs based on y_true
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+
+    mask = ~np.isnan(y_true)
+    y_true = y_true[mask]
+    y_pred = y_pred[mask]
+
+    if y_true.size == 0:
+        return np.nan
+
+    diff = y_true - y_pred
+    rmse = np.sqrt(np.mean(diff ** 2))
+    rms_gt = np.sqrt(np.mean(y_true ** 2))
+
+    if rms_gt == 0:
+        return np.nan
+
+    return rmse / rms_gt
+    
 def mae(app_gt,app_pred):
     return mean_absolute_error(app_gt,app_pred)
 
