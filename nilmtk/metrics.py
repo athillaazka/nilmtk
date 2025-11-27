@@ -42,7 +42,53 @@ from .metergroup import MeterGroup
 from .metergroup import iterate_through_submeters_of_two_metergroups
 from .electric import align_two_meters
 
+def normalized_rms_error_power(predictions, ground_truth):
+    '''Compute normalized RMS error in assigned power.
 
+    This is the RMS error divided by the RMS of the ground truth power.
+
+    .. math::
+            nrmse^{(n)} = \\frac{\\sqrt{ \\frac{1}{T} \\sum_t{ \\left ( y_t^{(n)} - \\hat{y}_t^{(n)} \\right )^2 } }}
+            {\\sqrt{ \\frac{1}{T} \\sum_t{ \\left ( y_t^{(n)} \\right )^2 } }}
+
+    Parameters
+    ----------
+    predictions, ground_truth : nilmtk.MeterGroup
+
+    Returns
+    -------
+    error : pd.Series
+        Each index is an meter instance int (or tuple for MeterGroups).
+        Each value is the normalized RMS error in predicted power for that appliance.
+    '''
+
+    error = {}
+
+    both_sets_of_meters = iterate_through_submeters_of_two_metergroups(
+        predictions, ground_truth)
+    for pred_meter, ground_truth_meter in both_sets_of_meters:
+        sum_of_squared_diff = 0.0
+        sum_of_squared_gt = 0.0
+        n_samples = 0
+        for aligned_meters_chunk in align_two_meters(pred_meter,
+                                                     ground_truth_meter):
+            diff = aligned_meters_chunk.iloc[:, 0] - aligned_meters_chunk.iloc[:, 1]
+            gt = aligned_meters_chunk.iloc[:, 1]
+            diff.dropna(inplace=True)
+            gt = gt.loc[diff.index]
+            sum_of_squared_diff += (diff ** 2).sum()
+            sum_of_squared_gt += (gt ** 2).sum()
+            n_samples += len(diff)
+
+        if n_samples == 0 or sum_of_squared_gt == 0:
+            error[pred_meter.instance()] = np.nan
+        else:
+            rms = math.sqrt(sum_of_squared_diff / n_samples)
+            rms_gt = math.sqrt(sum_of_squared_gt / n_samples)
+            error[pred_meter.instance()] = rms / rms_gt
+
+    return pd.Series(error)
+    
 def error_in_assigned_energy(predictions, ground_truth):
     """Compute error in assigned energy.
 
